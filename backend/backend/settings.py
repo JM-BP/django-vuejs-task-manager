@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',  # Django REST Framework
-    'rest_framework_simplejwt',  # Manejo de JWT
+    'rest_framework_simplejwt', #Habilita el soporte de JWT en Django
     'corsheaders',  # Manejo de CORS
     'tasks',  # Nuestra aplicación de tareas
 ]
@@ -49,8 +49,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'corsheaders.middleware.CorsMiddleware',  # Middleware de CORS
     'django.middleware.csrf.CsrfViewMiddleware',
-    'django.contrib.auth.middleware.AuthenticationMiddleware',  # ✅ CORRECTO
-    'django.contrib.messages.middleware.MessageMiddleware',  # ✅ CORRECTO
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django.contrib.messages.middleware.MessageMiddleware', 
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -60,11 +60,15 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 # Configuración de Django REST Framework
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
+    #DEFAULT_AUTHENTICATION_CLASSES: Garantiza que los usuarios tendrán que autenticarse usando JWT antes de acceder a los endpoint.
+    'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
+    ],
+    #DEFAULT_PERMISSION_CLASSES: Establece que solo los usuarios autenticados podrán acceder a las vistas de la API, protegiendo así los endpoints.
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
 }
-
 
 ROOT_URLCONF = 'backend.urls'
 
