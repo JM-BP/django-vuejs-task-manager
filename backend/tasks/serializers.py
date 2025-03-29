@@ -5,6 +5,7 @@ class BoardSerializer(serializers.ModelSerializer):
     class Meta:
         model = Board
         fields = ['id', 'name', 'owner', 'created_at']
+        extra_kwargs = {'owner': {'read_only': True}} 
 
 class ListSerializer(serializers.ModelSerializer):
     class Meta:

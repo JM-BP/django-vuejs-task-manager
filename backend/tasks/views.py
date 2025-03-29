@@ -1,70 +1,84 @@
-from rest_framework import generics
+from rest_framework import generics, permissions
 from .models import Board, List, Task
 from .serializers import BoardSerializer, ListSerializer, TaskSerializer
-from rest_framework.permissions import IsAuthenticated
 
-# Vistas de Tableros
-'''
-BoardListCreateView
-    Vista para manejar las peticiones GET y POST para listar y crear tableros.
-    Usa ListCreateAPIView que proporciona funcionalidades para listar y crear objetos.
-'''
-class BoardListCreateView(generics.ListCreateAPIView):             
-    queryset = Board.objects.all()
+# ----- Vistas para Tableros -----
+class BoardListCreateView(generics.ListCreateAPIView):
     serializer_class = BoardSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        return Board.objects.filter(owner=self.request.user)  # Solo ver los tableros del usuario
 
-'''
-BoardDetailView
-    Vista para  manejar las peticiones GET, PUT/PATCH y DELETE para obtener, actualizar y eliminar un tablero en específico.
-    Usa RetrieveUpdateDestroyAPIView para estas operaciones.
-'''
+    def perform_create(self, serializer):
+        print("Usuario autenticado:", self.request.user)  # 👈 Verifica en la consola de Django
+        serializer.save(owner=self.request.user)
+
 class BoardDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Board.objects.all()
     serializer_class = BoardSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
-#Vistas de Listas
+    def get_queryset(self):
+        return Board.objects.filter(owner=self.request.user)  # Solo acceder a los propios tableros
 
-'''
-ListListCreateView
-    Vista para manejar las peticiones GET y POST para listar y crear listas.
-    Usa ListCreateAPIView que proporciona funcionalidades para listar y crear objetos.
-'''
+
+# ----- Vistas para Listas -----
 class ListListCreateView(generics.ListCreateAPIView):
-    queryset = List.objects.all()
     serializer_class = ListSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
-'''
-ListDetailView
-    Vista para  manejar las peticiones GET, PUT/PATCH y DELETE para obtener, actualizar y eliminar una lista en específico.
-    Usa RetrieveUpdateDestroyAPIView para estas operaciones.
-'''
+    def get_queryset(self):
+        board_id = self.request.query_params.get('board', None)
+        if board_id:
+            return List.objects.filter(board__owner=self.request.user, board_id=board_id)
+        return List.objects.filter(board__owner=self.request.user)
+
+    def perform_create(self, serializer):
+        board = serializer.validated_data['board']
+        if board.owner != self.request.user:
+            raise PermissionError("No tienes permiso para agregar listas a este tablero")
+        serializer.save()
+
+
 class ListDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = List.objects.all()
     serializer_class = ListSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
-# Vistas de Tareas
-'''
-TaskListCreateView
-    Vista para manejar las peticiones GET y POST para listar y crear tareas.
-    Usa ListCreateAPIView que proporciona funcionalidades para listar y crear objetos.
-'''
+    def get_queryset(self):
+        return List.objects.filter(board__owner=self.request.user)
+
+
+# ----- Vistas para Tareas -----
 class TaskListCreateView(generics.ListCreateAPIView):
-    queryset = Task.objects.all()
     serializer_class = TaskSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
-'''
-TaskDetailView
-    Vista para  manejar las peticiones GET, PUT/PATCH y DELETE para obtener, actualizar y eliminar una tarea en específico.
-    Usa RetrieveUpdateDestroyAPIView para estas operaciones.
-'''
+    def get_queryset(self):
+        list_id = self.request.query_params.get('list', None)
+        if list_id:
+            return Task.objects.filter(list__board__owner=self.request.user, list_id=list_id)
+        return Task.objects.filter(list__board__owner=self.request.user)
+
+    def perform_create(self, serializer):
+        task_list = serializer.validated_data['list']
+        if task_list.board.owner != self.request.user:
+            raise PermissionError("No tienes permiso para agregar tareas a esta lista")
+        serializer.save()
+
+
 class TaskDetailView(generics.RetrieveUpdateDestroyAPIView):
-    queryset = Task.objects.all()
     serializer_class = TaskSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get_queryset(self):
+        return Task.objects.filter(list__board__owner=self.request.user)
+
+
+
+'''
+ curl -X POST http://127.0.0.1:8000/api/boards/ \
+     -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzQzMTUyNTkwLCJpYXQiOjE3NDMxNTIyOTAsImp0aSI6ImE0NDkyMDEzYjI2ODQ2NDNiNTk3YzdhMWQzYTE5NTliIiwidXNlcl9pZCI6MX0.jv0AG_4uis0WAEHn7eY528vCsZlVujhcdWKGysx_oq0" \
+     -H "Content-Type: application/json" \
+     -d '{"name": "Nuevo Tablero"}'
+{"owner":["This field is required."]}%  
+'''
