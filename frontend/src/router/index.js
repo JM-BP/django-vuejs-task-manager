@@ -6,7 +6,7 @@ import BoardView from '../components/BoardView.vue'
 const routes = [
   { path: '/', component: Login },
   { path: '/dashboard', component: Dashboard },
-  { path: '/boards/:id', component: BoardView, props: true },
+  { path: '/board/:id', component: BoardView },
 ]
 
 const router = createRouter({

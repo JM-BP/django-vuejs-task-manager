@@ -1,77 +1,154 @@
 <template>
   <div class="board-view">
     <h2>{{ board.name }}</h2>
-    <div class="new-list">
-      <input type="text" v-model="newListName" placeholder="Nombre de la lista" />
-      <button @click="createList">Añadir Lista</button>
-    </div>
-    <div v-if="lists.length === 0">No hay listas en este tablero.</div>
+    <input v-model="newListName" placeholder="Nombre de la lista" />
+    <button @click="createList">Crear Lista</button>
+
     <div class="lists">
-      <div v-for="list in lists" :key="list.id" class="list">
+      <div v-for="list in lists" :key="list.id" class="list" :data-list-id="list.id">
         <h3>{{ list.name }}</h3>
-        <TaskView :listId="list.id" />
+        <input v-model="newTaskTitle[list.id]" placeholder="Nueva tarea" />
+        <button @click="createTask(list.id)">Añadir Tarea</button>
+
+        <!-- Lista de tareas con funcionalidad de arrastrar y soltar -->
+        <draggable
+          v-model="list.tasks"
+          group="tasks"
+          @end="onTaskDrop"
+          item-key="id"
+          class="task-list"
+        >
+          <template #item="{ element }">
+            <div class="task">{{ element.title }}</div>
+          </template>
+        </draggable>
       </div>
     </div>
   </div>
 </template>
 
 <script>
+import BoardService from '../services/BoardService'
 import ListService from '../services/ListService'
-import TaskView from './TaskView.vue'
+import TaskService from '../services/TaskService'
+import { useRoute } from 'vue-router'
+import { ref } from 'vue'
+import draggable from 'vuedraggable'
 
 export default {
-  props: ['id'],
-  components: { TaskView },
+  components: {
+    draggable,
+  },
   data() {
     return {
-      board: { id: this.id, name: '' },
+      board: {},
       lists: [],
       newListName: '',
+      newTaskTitle: {},
     }
   },
-  async created() {
-    await this.fetchLists()
+  setup() {
+    const route = useRoute()
+    return { route }
   },
   methods: {
+    async fetchBoard() {
+      try {
+        this.board = await BoardService.getBoard(this.route.params.id)
+      } catch (error) {
+        console.error('Error al obtener tablero:', error)
+      }
+    },
     async fetchLists() {
       try {
-        this.lists = await ListService.getLists(this.id)
+        this.lists = await ListService.getLists(this.route.params.id)
       } catch (error) {
-        console.error('Error al cargar listas:', error)
+        console.error('Error al obtener listas:', error)
       }
     },
     async createList() {
       if (!this.newListName) return
       try {
-        await ListService.createList(this.id, this.newListName)
+        await ListService.createList(this.route.params.id, this.newListName)
         this.newListName = ''
-        await this.fetchLists()
+        this.fetchLists()
       } catch (error) {
         console.error('Error al crear lista:', error)
       }
     },
+    async createTask(listId) {
+      if (!this.newTaskTitle[listId]) return
+      try {
+        await TaskService.createTask(listId, this.newTaskTitle[listId])
+        this.newTaskTitle[listId] = ''
+        this.fetchLists()
+      } catch (error) {
+        console.error('Error al crear tarea:', error)
+      }
+    },
+    async onTaskDrop(event) {
+      try {
+        const taskId = event.item.__draggable_context.element.id
+        const newListElement = event.to.closest('.list') // Buscar el elemento HTML de la nueva lista
+        if (!newListElement) {
+          console.error('No se pudo determinar la nueva lista')
+          return
+        }
+
+        const newListId = newListElement.getAttribute('data-list-id') // Obtener el ID de la lista destino
+        if (!newListId) {
+          console.error('ID de lista destino no encontrado')
+          return
+        }
+
+        await TaskService.updateTask(taskId, { list: newListId })
+        console.log('Tarea movida correctamente')
+
+        // Recargar las listas para reflejar los cambios
+        await this.fetchLists()
+      } catch (error) {
+        console.error('Error al mover tarea:', error)
+      }
+    },
+  },
+  mounted() {
+    this.fetchBoard()
+    this.fetchLists()
   },
 }
 </script>
 
 <style scoped>
 .board-view {
+  text-align: center;
   max-width: 800px;
   margin: auto;
-  text-align: center;
-}
-.new-list {
-  margin-bottom: 20px;
+  padding: 20px;
 }
 .lists {
   display: flex;
   gap: 20px;
-  overflow-x: auto;
 }
 .list {
-  background: #f9f9f9;
+  border: 1px solid #ccc;
+  padding: 10px;
+  margin: 10px;
+  width: 200px;
+}
+.task-list {
+  min-height: 50px;
+  background: #f8f8f8;
   padding: 10px;
   border-radius: 5px;
-  min-width: 200px;
+}
+.task {
+  padding: 10px;
+  margin-bottom: 5px;
+  background: #fff;
+  border-radius: 5px;
+  cursor: grab;
+}
+.task:active {
+  cursor: grabbing;
 }
 </style>

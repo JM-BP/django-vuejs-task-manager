@@ -17,6 +17,14 @@ const BoardService = {
     }
   },
 
+  async getBoard(boardId) {
+    const token = AuthService.getAccessToken()
+    const response = await axios.get(`${API_URL}${boardId}/`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+    return response.data
+  },
+
   async createBoard(name) {
     const token = localStorage.getItem('access')
     if (!token) {

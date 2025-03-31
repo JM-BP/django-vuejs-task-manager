@@ -23,12 +23,12 @@ export default {
       const token = AuthService.getAccessToken()
       const response = await axios.post(
         API_URL,
-        { title, list: listId },
+        { list: listId, title, description: '', completed: false },
         { headers: { Authorization: `Bearer ${token}` } },
       )
       return response.data
     } catch (error) {
-      console.error('Error al crear tarea:', error)
+      console.error('Error al crear tarea:', error.response?.data || error)
       throw error
     }
   },

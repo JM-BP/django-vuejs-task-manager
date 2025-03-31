@@ -1,5 +1,85 @@
 <template>
   <div class="dashboard">
+    <h2>Tableros</h2>
+    <input v-model="newBoardName" placeholder="Nombre del tablero" />
+    <button @click="createBoard">Crear Tablero</button>
+
+    <ul>
+      <li v-for="board in boards" :key="board.id" @click="goToBoard(board.id)">
+        {{ board.name }}
+      </li>
+    </ul>
+  </div>
+</template>
+
+<script>
+import BoardService from '../services/BoardService'
+import { useRouter } from 'vue-router'
+
+export default {
+  data() {
+    return {
+      newBoardName: '',
+      boards: [],
+    }
+  },
+  setup() {
+    const router = useRouter()
+    return { router }
+  },
+  methods: {
+    async fetchBoards() {
+      try {
+        this.boards = await BoardService.getBoards()
+      } catch (error) {
+        console.error('Error al obtener tableros:', error)
+      }
+    },
+    async createBoard() {
+      if (!this.newBoardName) return
+      try {
+        await BoardService.createBoard(this.newBoardName)
+        this.newBoardName = ''
+        this.fetchBoards()
+      } catch (error) {
+        console.error('Error al crear tablero:', error)
+      }
+    },
+    goToBoard(boardId) {
+      this.router.push(`/board/${boardId}`)
+    },
+  },
+  mounted() {
+    this.fetchBoards()
+  },
+}
+</script>
+
+<style scoped>
+.dashboard {
+  max-width: 600px;
+  margin: auto;
+  padding: 20px;
+}
+ul {
+  list-style: none;
+  padding: 0;
+}
+li {
+  cursor: pointer;
+  padding: 10px;
+  background: #eee;
+  margin-top: 5px;
+  border-radius: 5px;
+}
+li:hover {
+  background: #ddd;
+}
+</style>
+
+<!--
+<template>
+  <div class="dashboard">
     <h2>Mis Tableros</h2>
     <div class="new-board">
       <input type="text" v-model="newBoardName" placeholder="Nombre del tablero" />
@@ -88,3 +168,4 @@ button {
   border-radius: 5px;
 }
 </style>
+-->
